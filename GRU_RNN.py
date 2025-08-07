@@ -1,103 +1,113 @@
+import nltk
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Embedding,GRU, Dropout
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
+from nltk.corpus import gutenberg
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.utils import pad_sequences
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, GRU, Embedding, Dropout
 
-# 1. Load Data
-try:
-    with open('hamlet.txt', 'r') as file:
-        text_data = file.read()
-except FileNotFoundError:
-    print("Error: The text file was not found. Please ensure 'hamlet.txt' is in the same directory.")
-    exit()
+# 2. Download and Load Hamlet Text Corpus
 
-# 2. Tokenization
+nltk.download('gutenberg')  # Download Gutenberg corpus
+data = gutenberg.raw('shakespeare-hamlet.txt')  # Load raw text of Hamlet
+
+# 3. Save the Text and Read as Lowercase
+
+with open('hamlet.txt', 'w') as file:
+    file.write(data)  # Save text to a file
+
+with open('hamlet.txt', 'r') as file:
+    text = file.read().lower()  # Read file and convert to lowercase
+
+# 4. Tokenize the Entire Text
+
+
 tokenizer = Tokenizer()
-tokenizer.fit_on_texts([text_data]) # Build the word-to-index vocabulary.
+tokenizer.fit_on_texts([text])  # Fit tokenizer on full text
+total_words = len(tokenizer.word_index) + 1  # Calculate vocabulary size
 
-# Save the tokenizer to reuse it later for decoding.
-with open('tokenizer.pickle', 'wb') as handle:
-    pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# 5. Generate n-gram Sequences from Each Line
 
-# 3. Create Input Sequences
-# Split the text into lines to create training samples.
-lines = text_data.split('\n')
+input_sequence = []
 
-# Convert lines of text into sequences of integers.
-input_sequences = tokenizer.texts_to_sequences(lines)
-# Filter out empty or very short sequences.
-input_sequences = [seq for seq in input_sequences if len(seq) > 1]
+for line in text.split('\n'):
+    token_list = tokenizer.texts_to_sequences([line])[0]  # Convert line to token list
+    for i in range(1, len(token_list)):
+        n_gram_sequence = token_list[:i+1]  # Create n-gram sequences
+        input_sequence.append(n_gram_sequence)
 
-# Create n-gram sequences for training
-sequences = []
-for line in input_sequences:
-    for i in range(1, len(line)):
-        n_gram_sequence = line[:i+1]
-        sequences.append(n_gram_sequence)
+# 6. Pad Sequences to the Same Length
 
-# Pad all sequences to the same length for model input.
-max_sequence_len = max([len(x) for x in sequences])
-sequences = np.array(pad_sequences(sequences, maxlen=max_sequence_len, padding='pre'))
+max_seq_len = max(len(x) for x in input_sequence)  # Find max sequence length
+input_sequence = pad_sequences(input_sequence, padding='pre', maxlen=max_seq_len)  # Pad all sequences
 
-# Split data into inputs (X) and labels (y).
-X = sequences[:, :-1] # All tokens except the last.
-y = sequences[:, -1]  # The last token.
+# 7. Prepare Features (X) and Labels (Y)
 
-# One-hot encode the labels (y) for the categorical cross-entropy loss function.
-vocab_size = len(tokenizer.word_index) + 1
-y = tf.keras.utils.to_categorical(y, num_classes=vocab_size)
+x, y = input_sequence[:, :-1], input_sequence[:, -1]  # Last word is the label
+y = tf.keras.utils.to_categorical(y, num_classes=total_words)  # One-hot encode the labels
 
-# 4. Build the LSTM Model
-model=Sequential()
-model.add(Embedding(input_dim=vocab_size,output_dim=100))
-model.add(GRU(200,return_sequences=True))
-model.add(Dropout(0.2))
-model.add(GRU(150))
-model.add(Dense(vocab_size,activation='softmax'))
-model.build(input_shape=(None, max_sequence_len - 1))
+# 8. Split Data into Training and Testing
 
-# 5. Compile and Train the Model
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=7)
+
+# 9. Define the GRU-Based Model 
+
+model = Sequential()
+model.add(Embedding(input_dim=total_words, output_dim=100))  # Word embedding layer
+model.add(GRU(200, return_sequences=True))  # First GRU layer
+model.add(Dropout(0.2))  # Dropout layer for regularization
+model.add(GRU(150))  # Second GRU layer
+model.add(Dense(total_words, activation='softmax'))  # Output layer
+
+# Build and display model summary
+model.build(input_shape=(None, max_seq_len - 1))
 model.summary()
+ 
+# 10. Compile and Train the Model 
 
-# Train the model.
-print("\nStarting model training...")
-model.fit(X, y, epochs=100, verbose=1)
-print("Model training complete.")
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# 6. Save the Trained Model
-model.save('text_generation_model.h5')
-print("Model and tokenizer have been saved.")
+history = model.fit(
+    x_train,
+    y_train,
+    validation_data=(x_test, y_test),
+    verbose=1,
+    epochs=100
+)
 
+# 11. Predict the Next Word Function
 
-# 7. Generate New Text
-# Start with an initial text to prompt the model.
-seed_text = "I have heard"
-next_words = 100
+def predicts_next_word(model, tokenizer, text, max_sequence_len):
+    token_list = tokenizer.texts_to_sequences([text])[0]  # Tokenize input text
 
-print(f"\n--- Generating Text\nSeed: '{seed_text}'")
+    # Trim to match input length used during training
+    if len(token_list) >= max_sequence_len:
+        token_list = token_list[-(max_sequence_len - 1):]
 
-for _ in range(next_words):
-    # Prepare the seed text for prediction.
-    token_list = tokenizer.texts_to_sequences([seed_text])[0]
-    token_list = pad_sequences([token_list], maxlen=max_sequence_len-1, padding='pre')
+    token_list = pad_sequences([token_list], maxlen=max_sequence_len - 1, padding='pre')  # Pad input
+    predicted = model.predict(token_list, verbose=0)  # Make prediction
+    predicted_word_index = np.argmax(predicted, axis=1)[0]  # Get index of highest probability
 
-    # Predict the next word's index.
-    predicted_probs = model.predict(token_list, verbose=0)
-    predicted_word_index = np.argmax(predicted_probs, axis=-1)[0]
-
-    # Convert the index back to a word.
-    output_word = ""
+    # Map index back to word
     for word, index in tokenizer.word_index.items():
         if index == predicted_word_index:
-            output_word = word
-            break
+            return word
 
-    # Append the new word and repeat.
-    seed_text += " " + output_word
+# 12. Test the Prediction Function
+input_text = "Is not this something more then"
+print(f"Input Text: {input_text}")
 
-print("\nGenerated Text:")
-print(seed_text)
+max_sequence_len = model.input_shape[1] + 1
+next_word = predicts_next_word(model, tokenizer, input_text, max_sequence_len)
+
+print(f"Predicted Next Word: {next_word}")
+
+# # 13. Save Model and Tokenizer
+# 
+model.save('predicts_next_word_LSTM.h5')  # Save trained model
+
+with open('tokenizer.pickle', 'wb') as handle:
+    pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)  # Save tokenizer
