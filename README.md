@@ -1,6 +1,6 @@
 Text Generation with a GRU Neural Network
 
-This project uses a Gated Recurrent Unit (GRU)M) network, built with TensorFlow and Keras, to generate new text in the style of "The Adventures of Sherlock Holmes" by Arthur Conan Doyle.
+This project uses a Gated Recurrent Unit (GRU) network, built with TensorFlow and Keras, to generate new text in the style of "The Adventures of Sherlock Holmes" by Arthur Conan Doyle.
 📝 Description
 
 The Python script (GNU_RNN.py) reads the full text of the book, trains an LSTM model to learn the patterns, vocabulary, and sentence structure, and then uses the trained model to generate new text one word at a time.
