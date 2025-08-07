@@ -1,51 +1,32 @@
-Text Generation with a GRU Neural Network
+# 📚 Next Word Prediction using GRU (Hamlet Text)
 
-This project uses a Gated Recurrent Unit (GRU) network, built with TensorFlow and Keras, to generate new text in the style of "The Adventures of Sherlock Holmes" by Arthur Conan Doyle.
-📝 Description
+This project uses a GRU-based deep learning model to predict the **next word** in a sentence, trained on the classic text **Hamlet** by William Shakespeare. It leverages **natural language processing (NLP)** techniques and **neural networks** to learn word patterns and generate predictions.
 
-The Python script (GNU_RNN.py) reads the full text of the book, trains an LSTM model to learn the patterns, vocabulary, and sentence structure, and then uses the trained model to generate new text one word at a time.
-⚙️ How It Works
+---
 
-The process involves several key steps:
+## 🚀 Features
 
-    Load Data: The script reads the hamlet.txt file.
+- Loads and processes Shakespeare's *Hamlet* using NLTK
+- Builds n-gram sequences for training
+- GRU-based neural network architecture
+- One-word prediction based on input text
+- Trains on tokenized and padded sequences
+- Saves trained model and tokenizer for future use
 
-    Tokenization: The text is broken down into a sequence of numerical tokens, where each unique word is assigned an integer. The tokenizer is saved as tokenizer.pickle.
+---
 
-    Sequence Creation: The script creates input-output pairs (n-grams) from the text. For example, for the sentence "the cat sat", it creates pairs like (the cat, sat).
+## 🧠 Model Architecture
 
-    Model Building: An GRU model is constructed with an Embedding layer, an GRU layer, and a Dense output layer.
+- **Embedding Layer**: Converts word indices into dense vectors
+- **GRU Layers**: Two GRU (Gated Recurrent Unit) layers to capture word dependencies
+- **Dropout Layer**: Prevents overfitting
+- **Dense Output Layer**: Predicts the next word using softmax
 
-    Training: The model is trained on the prepared sequences for 100 epochs to learn the linguistic patterns of the source text.
+---
 
-    Saving: The trained model is saved as text_generation_model.h5, and the tokenizer is saved as tokenizer.pickle.
+## 🛠️ Requirements
 
-    Text Generation: After training, the script uses a "seed text" (e.g., "I have heard") to predict the next word, appends it, and repeats the process to generate a new passage.
+Install required packages using:
 
-📋 Requirements
-
-To run this script, you will need Python and the following libraries:
-
-    tensorflow
-
-    numpy
-
-You can install them using pip:
-
-pip install tensorflow numpy
-
-▶️ How to Run
-
-    Place the Data File: Make sure the text file hamlet.txt is in the same directory as the Python script.
-
-    Execute the Script: Run the script from your terminal.
-
-    python GRU_RNN.py
-
-    Output: The script will first print a summary of the model and then show the training progress for 100 epochs. After training is complete, it will save the model and tokenizer files and print a sample of the newly generated text.
-
-📂 Files Generated
-
-    tokenizer.pickle: A saved copy of the tokenizer containing the word-to-index vocabulary.
-
-    text_generation_model.h5: The trained Keras model, including its architecture and learned weights.
+```bash
+pip install -r requirements.txt
